@@ -5,6 +5,10 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from typing import List, Dict, Tuple, Union
 import json
+from sklearn.metrics import pairwise_distances, silhouette_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 
 def load_image(path: str, target_size: Tuple[int, int] = None) -> np.ndarray:
@@ -215,6 +219,81 @@ def print_feature_summary(features: Dict):
         print(f"  {name:15} : {value}")
     
     print("="*50 + "\n")
+
+
+def evaluate_feature_embeddings(X: np.ndarray, y: List, cv: int = 5) -> Dict:
+    """Đánh giá định lượng chất lượng embedding/feature.
+
+    Tham số:
+    - X: mảng (n_samples, n_features)
+    - y: danh sách nhãn tương ứng
+    - cv: số fold cho cross-validation đánh giá phân loại
+
+    Trả về một dict với các chỉ số: intra_class_distance, inter_class_distance,
+    silhouette_score, classification_accuracy (mean/std), f1_macro (mean/std).
+    """
+    X = np.asarray(X)
+    y = np.asarray(y)
+
+    results = {}
+
+    if X.size == 0 or len(X.shape) != 2:
+        return {"error": "Invalid feature matrix X"}
+
+    # Khoảng cách cặp
+    D = pairwise_distances(X, metric='euclidean')
+
+    # Tính intra-class và inter-class mean distances
+    classes = np.unique(y)
+    intra_dists = []
+    inter_dists = []
+
+    for c in classes:
+        idx = np.where(y == c)[0]
+        if len(idx) > 1:
+            # lấy nửa trên của ma trận để tránh double counting
+            sub = D[np.ix_(idx, idx)]
+            triu_idx = np.triu_indices_from(sub, k=1)
+            vals = sub[triu_idx]
+            if vals.size > 0:
+                intra_dists.append(vals.mean())
+
+    # inter-class
+    for i, ca in enumerate(classes):
+        for cb in classes[i+1:]:
+            ia = np.where(y == ca)[0]
+            ib = np.where(y == cb)[0]
+            if ia.size > 0 and ib.size > 0:
+                vals = D[np.ix_(ia, ib)].ravel()
+                inter_dists.append(vals.mean())
+
+    results['intra_class_distance_mean'] = float(np.mean(intra_dists)) if intra_dists else None
+    results['inter_class_distance_mean'] = float(np.mean(inter_dists)) if inter_dists else None
+
+    # Silhouette score (n_classes >= 2)
+    try:
+        if len(classes) > 1 and X.shape[0] > len(classes):
+            results['silhouette_score'] = float(silhouette_score(X, y))
+        else:
+            results['silhouette_score'] = None
+    except Exception:
+        results['silhouette_score'] = None
+
+    # Đánh giá phân loại đơn giản với LogisticRegression (cross-val)
+    try:
+        clf = LogisticRegression(max_iter=2000)
+        skf = StratifiedKFold(n_splits=min(cv, max(2, len(classes))), shuffle=True, random_state=0)
+        acc_scores = cross_val_score(clf, X, y, cv=skf, scoring='accuracy')
+        f1_scores = cross_val_score(clf, X, y, cv=skf, scoring='f1_macro')
+
+        results['classification_accuracy_mean'] = float(np.mean(acc_scores))
+        results['classification_accuracy_std'] = float(np.std(acc_scores))
+        results['f1_macro_mean'] = float(np.mean(f1_scores))
+        results['f1_macro_std'] = float(np.std(f1_scores))
+    except Exception as e:
+        results['classification_error'] = str(e)
+
+    return results
 
 
 if __name__ == "__main__":

@@ -37,6 +37,9 @@ output/
 models/*.pth
 *.db
 
+# Data - Large image files
+data/images/
+
 # OS
 .DS_Store
 Thumbs.db

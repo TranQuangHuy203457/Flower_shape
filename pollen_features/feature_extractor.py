@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from PIL import Image
+ 
 import os
 import gc
 from typing import Dict, List, Tuple, Optional, Union
@@ -22,6 +23,7 @@ class PollenFeatureExtractor:
         self.shape_extractor = ShapeExtractor()
         self.size_extractor = SizeExtractor()
         self.surface_extractor = SurfaceExtractor()
+        
         self.aperture_extractor = ApertureExtractor()
         self.exine_extractor = ExineExtractor()
         self.section_extractor = SectionExtractor()
@@ -308,16 +310,14 @@ class SurfaceExtractor(BaseFeatureExtractor):
             "surface_class": surface_class,
             "confidence": confidence
         }
-    
+
     def _compute_glcm_features(self, gray: np.ndarray, mask: np.ndarray) -> Dict:
         """Tính các đặc trưng từ GLCM"""
-        # Đơn giản hóa: tính các thống kê cơ bản
         masked_pixels = gray[mask > 0]
         
         if len(masked_pixels) == 0:
             return {"contrast": 0, "energy": 0, "homogeneity": 0, "correlation": 0}
         
-        # Tính gradient (đại diện cho texture roughness)
         sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
         sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
         gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
@@ -338,7 +338,6 @@ class SurfaceExtractor(BaseFeatureExtractor):
     
     def _compute_lbp_features(self, gray: np.ndarray, mask: np.ndarray) -> Dict:
         """Tính Local Binary Pattern features"""
-        # LBP đơn giản
         lbp = np.zeros_like(gray)
         
         for i in range(1, gray.shape[0] - 1):
@@ -355,7 +354,6 @@ class SurfaceExtractor(BaseFeatureExtractor):
                 code |= (gray[i, j-1] > center) << 0
                 lbp[i, j] = code
         
-        # Histogram của LBP
         lbp_masked = lbp[mask > 0]
         if len(lbp_masked) > 0:
             hist, _ = np.histogram(lbp_masked, bins=256, range=(0, 256))
@@ -378,19 +376,21 @@ class SurfaceExtractor(BaseFeatureExtractor):
         contrast = glcm.get("contrast", 0)
         lbp_entropy = lbp.get("lbp_entropy", 0)
         
-        # Rule-based classification
         if roughness < 10 and contrast < 20:
-            return "psilate", 0.8  # Nhẵn
+            return "psilate", 0.8
         elif roughness < 20 and contrast < 40:
-            return "scabrate", 0.7  # Sần nhẹ
+            return "scabrate", 0.7
         elif roughness > 50 and lbp_entropy > 6:
-            return "echinate", 0.75  # Có gai
+            return "echinate", 0.75
         elif lbp_entropy > 5 and roughness > 30:
-            return "reticulate", 0.7  # Mạng lưới
+            return "reticulate", 0.7
         elif contrast > 50:
-            return "verrucate", 0.65  # Có mụn
+            return "verrucate", 0.65
         else:
-            return "striate", 0.6  # Có vân
+            return "striate", 0.6
+
+
+
 
 
 class ApertureExtractor(BaseFeatureExtractor):

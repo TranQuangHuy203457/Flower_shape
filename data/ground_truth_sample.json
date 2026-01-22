@@ -1,0 +1,29 @@
+[
+  {
+    "image": "images/Ha_0-25/Ha_0-25/0/Image-1_2024-05-07.json",
+    "shape": "spherical",
+    "size_um": 42.5,
+    "surface": "psilate",
+    "aperture_type": "tricolpate",
+    "exine": "medium",
+    "section": "equatorial"
+  },
+  {
+    "image": "images/Ha_0-25/Ha_0-25/0/Image-10_2024-05-07.json",
+    "shape": "ellipsoidal",
+    "size_um": 38.2,
+    "surface": "scabrate",
+    "aperture_type": "tricolpate",
+    "exine": "thin",
+    "section": "equatorial"
+  },
+  {
+    "image": "images/Ha_0-25/Ha_0-25/0/Image-100_2024-05-07.json",
+    "shape": "spherical",
+    "size_um": 45.0,
+    "surface": "reticulate",
+    "aperture_type": "triporate",
+    "exine": "thick",
+    "section": "polar"
+  }
+]
